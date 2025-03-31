@@ -51,9 +51,6 @@ int lastGas = 0;
 
 void loop() {
   Blynk.run();
-  if (!Blynk.connected()) {
-
-  }
   if (millis() - lastRun >= 1000) {  // Chạy mỗi 1 giây mà không chặn chương trình
     int gas = gasValue();
     lastRun = millis();
