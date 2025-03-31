@@ -1,0 +1,152 @@
+// #define BLYNK_TEMPLATE_ID "TMPL6ZSzEQJP9"
+// #define BLYNK_TEMPLATE_NAME "Project Group 2 IOT102t"
+// #define BLYNK_AUTH_TOKEN "dOHVtCkdAJnTyv1cT7Mx6MKDQ2-vuo2D"
+
+#define BLYNK_TEMPLATE_ID "TMPL670kq6pe0"
+#define BLYNK_TEMPLATE_NAME "Project Group 2 IOT102t"
+#define BLYNK_AUTH_TOKEN "GpKUQKi4puo9rHvPfhw99xaKoDGup_Db"
+
+#define BLYNK_PRINT Serial
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include <ESP32Servo.h>
+// #include <SimpleKalmanFilter.h>
+
+// SimpleKalmanFilter bo_loc(2, 2, 0.001);
+
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "DungKhongNgu";
+char pass[] = "dungkhongngu";
+
+#define relay 5
+#define BUZZER 19
+#define mq2 35
+#define cua 18
+unsigned long lastRun = 0;
+int mucGas = 700;
+Servo door;
+// WiFiClass wifi;
+// int button;
+// int gasValue;
+void setup() {
+  Serial.begin(115200);
+  Serial.print("Kết nối WiFi...");
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println(" WiFi Kết nối thành công!");
+
+  Blynk.begin(auth, ssid, pass, "blynk.cloud", 80);
+
+  door.attach(cua, 500, 2500);  // Giới hạn xung PWM
+  pinMode(BUZZER, OUTPUT);
+  pinMode(mq2, INPUT);
+  pinMode(relay, OUTPUT);
+}
+int lastGas = 0;
+
+void loop() {
+  Blynk.run();
+  if (!Blynk.connected()) {
+
+  }
+  if (millis() - lastRun >= 1000) {  // Chạy mỗi 1 giây mà không chặn chương trình
+    int gas = gasValue();
+    lastRun = millis();
+    manhThucChay(gas);
+    if (lastGas != gas) {
+      Blynk.virtualWrite(V1, gas);
+      lastGas = gas;
+    }
+  }
+}
+
+BLYNK_WRITE(V2) {
+  int button = param.asInt();
+  if (button == 1) {
+    batRelay();
+  } else {
+    tatRelay();
+  }
+}
+
+BLYNK_WRITE(V3) {
+  int button = param.asInt();
+  if (button == 1) {
+    mocua();
+  } else {
+    dongcua();
+  }
+}
+
+BLYNK_WRITE(V4) {
+  int NGUONG = param.asInt();
+  mucGas = NGUONG;
+}
+
+BLYNK_WRITE(V5) {
+  int button = param.asInt();
+  if (button == 1) {
+    loaKeu();
+  } else {
+    tatLoa();
+  }
+}
+int gasValue() {
+  delay(10);  // Thêm độ trễ để tín hiệu ổn định
+  int gasValue1 = analogRead(mq2);
+  // gasValue1 = bo_loc.updateEstimate(gasValue1);
+  Serial.print("Gas Value: ");
+  Serial.println(gasValue1);
+  return gasValue1;
+}
+bool checkChange = false;
+void manhThucChay(int gasValue) {
+  if (gasValue > mucGas) {
+    // if (checkChange == true) {
+      Blynk.logEvent("thong_bao", "cảnh báo nồng độ khí gas cao!");
+      loaKeu();
+      batRelay();
+      mocua();
+      // checkChange = false;
+    // }
+    checkChange = true;
+  } else {
+    if (checkChange == true) {
+      dongcua();
+      tatLoa();
+      tatRelay();
+      checkChange = false;
+    }
+    // checkChange = false;
+  }
+}
+
+void mocua() {
+  door.write(90);
+  delay(500);
+}
+void dongcua() {
+  door.write(0);
+  delay(500);
+}
+void loaKeu() {
+  // tone(BUZZER, 100);
+  digitalWrite(BUZZER, HIGH);  // Kích hoạt còi
+}
+void tatLoa() {
+  // tone(BUZZER, 100);
+  digitalWrite(BUZZER, LOW);  // Kích hoạt còi
+}
+
+void batRelay() {
+  digitalWrite(relay, HIGH);
+}
+
+void tatRelay() {
+  digitalWrite(relay, LOW);
+}
